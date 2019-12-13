@@ -4,26 +4,33 @@ use std::io::prelude::*;
 use std::path::Path;
 use regex::Regex;
 
-#[derive(Hash, Copy, Clone, PartialEq, PartialOrd)]
+#[derive(Hash, Clone, Copy)]
 struct Vec3 {
     x: i32,
     y: i32,
     z: i32,
 }
-impl std::ops::Add for Vec3 {
-    type Output = Self;
-
-    fn add(self, other: Self) -> Self {
-        Self {
+impl std::ops::AddAssign for Vec3 {
+    fn add_assign(&mut self, other: Self) {
+        *self = Self {
             x: self.x + other.x,
             y: self.y + other.y,
             z: self.z + other.z,
         }
     }
 }
+impl std::ops::SubAssign for Vec3 {
+    fn sub_assign(&mut self, other: Self) {
+        *self = Self {
+            x: self.x - other.x,
+            y: self.y - other.y,
+            z: self.z - other.z,
+        }
+    }
+}
 
 
-#[derive(Hash, Copy, Clone)]
+#[derive(Hash)]
 pub struct Moon {
     id: i32,
     pos: Vec3,
@@ -39,12 +46,6 @@ impl std::fmt::Display for Moon {
         write!(f, "pos=<x={}, y={}, z={}>, vel=<x={}, y={}, z={}>", self.pos.x, self.pos.y, self.pos.z, self.vel.x, self.vel.y, self.vel.z)
     }
 }
-impl PartialEq for Moon {
-    fn eq(&self, other: &Self) -> bool {
-        self.pos == other.pos && self.vel == other.vel
-    }
-}
-impl Eq for Moon {}
 
 pub fn get_total_energy(moons: &Vec<Moon>) -> i32 {
     let mut energy = 0;
@@ -58,36 +59,28 @@ pub fn get_total_energy(moons: &Vec<Moon>) -> i32 {
 }
 
 fn get_gravity_diff(pos1: &Vec3, pos2: &Vec3) -> Vec3 {
-    let x =  if pos1.x == pos2.x { 0 } else { if pos1.x < pos2.x { 1 } else { -1 } };
-    let y =  if pos1.y == pos2.y { 0 } else { if pos1.y < pos2.y { 1 } else { -1 } };
-    let z =  if pos1.z == pos2.z { 0 } else { if pos1.z < pos2.z { 1 } else { -1 } };
+    let x = if pos1.x == pos2.x { 0 } else { if pos1.x < pos2.x { 1 } else { -1 } };
+    let y = if pos1.y == pos2.y { 0 } else { if pos1.y < pos2.y { 1 } else { -1 } };
+    let z = if pos1.z == pos2.z { 0 } else { if pos1.z < pos2.z { 1 } else { -1 } };
     
     return Vec3 {
         x, y, z
     }
 }
 
-pub fn step(moons: &Vec<Moon>) -> Vec<Moon> {
-    let mut new_moons: Vec<Moon> = Vec::new();
-    for moon in moons {
-        new_moons.push(moon.clone());
-    }
+pub fn step(moons: &mut Vec<Moon>) {
     // Step 1: Apply gravity
     for index1 in 0..moons.len() {
         for index2 in (index1 + 1)..moons.len() {
-            let gravity_diff1 = get_gravity_diff(&moons[index1].pos, &moons[index2].pos);
-            new_moons[index1].vel = new_moons[index1].vel + gravity_diff1;
-
-            let gravity_diff2 = get_gravity_diff(&moons[index2].pos, &moons[index1].pos);
-            new_moons[index2].vel = new_moons[index2].vel + gravity_diff2;
+            let gravity_diff = get_gravity_diff(&moons[index1].pos, &moons[index2].pos);
+            moons[index1].vel += gravity_diff;
+            moons[index2].vel -= gravity_diff;
         }
     }
     // Step 2: Apply velocity
-    for mut moon in &mut new_moons {
-        moon.pos = moon.pos + moon.vel;
+    for moon in moons {
+        moon.pos += moon.vel;
     }
-
-    return new_moons;
 }
 
 pub fn parse_input(input: String) -> Vec<Moon> {
